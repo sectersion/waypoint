@@ -21,6 +21,10 @@ importers:
   examples/hello-agent: {}
 
   packages/cli:
+    dependencies:
+      esbuild:
+        specifier: ^0.28.0
+        version: 0.28.2
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

@@ -1,7 +1,10 @@
-// TODO: replace with a real Mastra agent (phase 2).
-// MVP-0 just needs the bundle to load. Phase 2 wires Mastra's Node adapter.
+import type { IncomingMessage, ServerResponse } from 'node:http'
 
-export default {
-  name: 'hello-agent',
-  handle: async () => 'hello from hello-agent v0',
+export default async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  res.writeHead(200, { 'content-type': 'application/json' })
+  res.end(JSON.stringify({
+    reply: 'hello from hello-agent',
+    method: req.method,
+    url:   req.url,
+  }))
 }
