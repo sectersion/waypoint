@@ -7,6 +7,7 @@ import { createDeployment } from './routes/deployments.js'
 import { invokeAgent } from './routes/invoke.js'
 import { serveArtifact } from './routes/artifacts.js'
 import { appendLogs, tailAgentLogs } from './routes/logs.js'
+import { listInvocations, listStateKv } from './routes/invocations.js'
 import { httpError } from './errors.js'
 import { runtimeHealth } from './runtime-client.js'
 
@@ -22,6 +23,18 @@ const server = http.createServer(async (req, res) => {
 })
 
 async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // ponytail: CORS for the static dashboard on a different port. Self-hosted
+  // v1, no auth — * is fine. Tighten on v1.x if it ever lands.
+  res.setHeader('access-control-allow-origin', '*')
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+      'access-control-allow-headers': 'content-type',
+    })
+    res.end()
+    return
+  }
+
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${config.port}`)
 
   if (url.pathname === '/health' && req.method === 'GET') {
@@ -65,6 +78,17 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (agentLogsMatch && req.method === 'GET') {
     const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get('limit') ?? '100')))
     return tailAgentLogs(agentLogsMatch[1]!, limit, res)
+  }
+
+  const invocationsMatch = url.pathname.match(/^\/v1\/agents\/([^/]+)\/invocations$/)
+  if (invocationsMatch && req.method === 'GET') {
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit') ?? '50')))
+    return listInvocations(invocationsMatch[1]!, limit, res)
+  }
+
+  const stateKvMatch = url.pathname.match(/^\/v1\/agents\/([^/]+)\/state$/)
+  if (stateKvMatch && req.method === 'GET') {
+    return listStateKv(stateKvMatch[1]!, res)
   }
 
   httpError(res, 404, 'not_found', `no route for ${req.method} ${url.pathname}`)

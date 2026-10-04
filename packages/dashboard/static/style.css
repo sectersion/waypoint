@@ -1,0 +1,62 @@
+:root {
+  --bg: #0e1116;
+  --fg: #e6edf3;
+  --dim: #8b949e;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --good: #3fb950;
+  --bad: #f85149;
+  --warn: #d29922;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg); color: var(--fg);
+  font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+.status {
+  font-size: 0.85rem; padding: 0.15rem 0.6rem;
+  border-radius: 999px; background: var(--border); color: var(--fg);
+}
+.status.ok  { background: var(--good);  color: #000; }
+.status.bad { background: var(--bad);   color: #000; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+th { color: var(--dim); font-weight: 500; font-size: 0.85rem; }
+.pill { padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; background: var(--border); }
+.pill.good { background: var(--good); color: #000; }
+.pill.warn { background: var(--warn); color: #000; }
+.pill.bad  { background: var(--bad);  color: #000; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; font-family: ui-monospace, monospace; }
+.kv .k { color: var(--dim); }
+.card {
+  background: #161b22; border: 1px solid var(--border);
+  border-radius: 6px; padding: 1rem; margin-bottom: 1rem;
+}
+.card h2 { margin: 0 0 0.5rem; font-size: 1rem; }
+.muted { color: var(--dim); }
+button {
+  background: var(--border); color: var(--fg);
+  border: 0; padding: 0.4rem 0.8rem; border-radius: 6px;
+  font: inherit; cursor: pointer;
+}
+button:hover { background: #444c56; }
+.log {
+  background: #0a0d12; border: 1px solid var(--border); border-radius: 6px;
+  padding: 0.5rem; max-height: 60vh; overflow: auto;
+  font-family: ui-monospace, monospace; font-size: 12px;
+  white-space: pre-wrap;
+}
+.log .ts { color: var(--dim); }
+.log .warn { color: var(--warn); }
+.log .error { color: var(--bad); }
+.log .info, .log .log, .log .debug { color: var(--fg); }

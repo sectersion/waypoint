@@ -5,7 +5,7 @@ export function forwardHttp(
   req: IncomingMessage,
   res: ServerResponse,
   target: string,
-): Promise<void> {
+): Promise<number> {
   return new Promise((resolve, reject) => {
     const u = new URL(target)
     const opts: http.RequestOptions = {
@@ -15,13 +15,15 @@ export function forwardHttp(
       path: (u.pathname || '/') + u.search,
       headers: filterHeaders(req.headers),
     }
+    let status = 502
     const proxyReq = http.request(opts, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers as OutgoingHttpHeaders)
+      status = proxyRes.statusCode ?? 502
+      res.writeHead(status, proxyRes.headers as OutgoingHttpHeaders)
       proxyRes.pipe(res)
     })
     proxyReq.once('error', reject)
     req.pipe(proxyReq)
-    res.once('close', () => resolve())
+    res.once('close', () => resolve(status))
   })
 }
 

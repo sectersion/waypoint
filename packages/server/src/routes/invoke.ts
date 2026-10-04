@@ -27,8 +27,8 @@ export async function invokeAgent(
   })
 
   try {
-    await forwardHttp(req, res, `${config.runtimeUrl}/v1/internal/agents/${agent.name}/invoke`)
-    await db.update(invocations).set({ endedAt: new Date() }).where(eq(invocations.id, invocationId))
+    const statusCode = await forwardHttp(req, res, `${config.runtimeUrl}/v1/internal/agents/${agent.name}/invoke`)
+    await db.update(invocations).set({ endedAt: new Date(), statusCode }).where(eq(invocations.id, invocationId))
   } catch (err) {
     await db.update(invocations).set({ endedAt: new Date(), statusCode: 502 }).where(eq(invocations.id, invocationId))
     if (!res.headersSent) httpError(res, 502, 'runtime_unavailable', String(err))
