@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.tsbuildinfo
+.turbo/
+.waypoint/
+# never commit compiled output that should only land in dist/
+**/*.js
+**/*.js.map
+**/*.d.ts
+**/*.d.ts.map
+*.log
+.env
+.env.local
+.DS_Store
