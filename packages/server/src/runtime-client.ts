@@ -2,6 +2,7 @@ import { config } from './waypoint-config.js'
 
 export async function runtimeClaim(
   agentName: string,
+  agentUuid: string,
   deploymentId: string,
   buildUrl: string,
   env: Record<string, string>,
@@ -9,7 +10,7 @@ export async function runtimeClaim(
   const res = await fetch(`${config.runtimeUrl}/v1/internal/agents/${agentName}/claim`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ deploymentId, buildUrl, env }),
+    body: JSON.stringify({ agentId: agentUuid, deploymentId, buildUrl, env }),
   })
   if (!res.ok) throw new Error(`runtime claim failed (${res.status}): ${await res.text()}`)
 }

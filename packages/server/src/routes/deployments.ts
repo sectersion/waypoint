@@ -96,7 +96,7 @@ export async function createDeployment(
     .where(and(eq(deployments.agentId, agentId), eq(deployments.status, 'active')))
 
   try {
-    await runtimeClaim(agent.name, deploymentId, `/v1/internal/artifacts/${deploymentId}/bundle`, manifest.env)
+    await runtimeClaim(agent.name, agent.id, deploymentId, `/v1/internal/artifacts/${deploymentId}/bundle`, manifest.env)
     await db.update(deployments).set({ status: 'active' }).where(eq(deployments.id, deploymentId))
   } catch (err) {
     await db.update(deployments).set({ status: 'failed' }).where(eq(deployments.id, deploymentId))

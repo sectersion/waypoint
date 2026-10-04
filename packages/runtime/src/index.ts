@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto'
 import { findFreePort, parsePortRange } from './ports.js'
 import * as registry from './registry.js'
 import { startAgent } from './agent-host.js'
+import { pool } from './db.js'
 
 const RUNTIME_PORT = Number(process.env.PORT ?? 3030)
 const AGENT_PORT_RANGE = parsePortRange(
@@ -18,7 +19,7 @@ const SERVER_URL =
 
 await fs.mkdir(BUNDLE_CACHE, { recursive: true })
 
-const server = http.createServer(async (req, res) => {
+const httpSrv = http.createServer(async (req, res) => {
   try {
     await route(req, res)
   } catch (err) {
@@ -78,6 +79,7 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse): Promi
 }
 
 interface ClaimBody {
+  agentId: string
   deploymentId: string
   buildUrl: string
   env: Record<string, string>
@@ -89,12 +91,18 @@ async function handleClaim(
   res: http.ServerResponse,
 ): Promise<void> {
   const body = (await readJson(req)) as Partial<ClaimBody> | null
+  const agentUuid = body?.agentId
   const deploymentId = body?.deploymentId
   const buildUrl = body?.buildUrl
   const env = body?.env
-  if (typeof deploymentId !== 'string' || typeof buildUrl !== 'string' || !env || typeof env !== 'object') {
+  if (
+    typeof agentUuid !== 'string' ||
+    typeof deploymentId !== 'string' ||
+    typeof buildUrl !== 'string' ||
+    !env || typeof env !== 'object'
+  ) {
     res.writeHead(400, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ error: 'bad_claim', message: 'expected {deploymentId, buildUrl, env}' }))
+    res.end(JSON.stringify({ error: 'bad_claim', message: 'expected {agentId, deploymentId, buildUrl, env}' }))
     return
   }
 
@@ -113,20 +121,26 @@ async function handleClaim(
   const bundlePath = path.join(cacheDir, 'bundle.mjs')
   await fs.writeFile(bundlePath, buf)
 
-  // ponytail: env is recorded on the agent record but not injected into
-  // process.env. MVP-0 runs agents in-process (this same Node process); v1.x
-  // child_process can spawn with merged env. Add child.applyEnv(env) when we
-  // swap.
   const port = await findFreePort(AGENT_PORT_RANGE, registry.usedPorts())
-  const started = await startAgent(bundlePath, port)
+  const started = await startAgent(bundlePath, port, agentUuid)
 
+  // ponytail: state rides on the agent's own HTTP port at /__waypoint/state.
+  // v1.x on Linux swaps to a separate Unix socket at /tmp/waypoint/<id>.sock
+  // per PLAN.md; the SDK reads WAYPOINT_STATE_URL today, and would read
+  // WAYPOINT_STATE_SOCKET (line-delimited JSON) after the swap.
+  process.env.WAYPOINT_STATE_URL = started.stateUrl
+
+  // ponytail: env is recorded on the agent record but not injected into
+  // process.env (in-process MVP-0). child_process swap will merge env.
   registry.put({
     agentId,
+    agentUuid,
     deploymentId,
     buildHash,
     env,
     port: started.port,
     url: started.url,
+    stateUrl: started.stateUrl,
     close: started.close,
     startedAt: new Date(),
   })
@@ -193,9 +207,20 @@ function readJson(req: http.IncomingMessage): Promise<unknown> {
   })
 }
 
-server.listen(RUNTIME_PORT, () => {
+httpSrv.listen(RUNTIME_PORT, () => {
   console.log(`[runtime] listening on http://127.0.0.1:${RUNTIME_PORT}`)
   console.log(`[runtime] agent ports: ${AGENT_PORT_RANGE.from}-${AGENT_PORT_RANGE.to}`)
   console.log(`[runtime] bundle cache: ${BUNDLE_CACHE}`)
   console.log(`[runtime] server url:   ${SERVER_URL}`)
 })
+
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  console.log(`[runtime] ${signal}, closing`)
+  for (const a of registry.list()) {
+    await a.close().catch(() => undefined)
+  }
+  await pool.end().catch(() => undefined)
+  process.exit(0)
+}
+process.on('SIGINT',  shutdown)
+process.on('SIGTERM', shutdown)

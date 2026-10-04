@@ -8,12 +8,12 @@ import { forwardHttp } from '../util/forward.js'
 import { httpError } from '../errors.js'
 
 export async function invokeAgent(
-  agentId: string,
+  agentName: string,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
-  const agent = (await db.select().from(agents).where(eq(agents.id, agentId)))[0]
-  if (!agent) return httpError(res, 404, 'agent_not_found', `no agent with id '${agentId}'`)
+  const agent = (await db.select().from(agents).where(eq(agents.name, agentName)))[0]
+  if (!agent) return httpError(res, 404, 'agent_not_found', `no agent with name '${agentName}'`)
   if (!agent.currentDeploymentId) {
     return httpError(res, 503, 'no_deployment', `agent '${agent.name}' has no active deployment`)
   }
@@ -21,7 +21,7 @@ export async function invokeAgent(
   const invocationId = randomUUID()
   await db.insert(invocations).values({
     id: invocationId,
-    agentId,
+    agentId: agent.id,
     deploymentId: agent.currentDeploymentId,
     startedAt: new Date(),
   })

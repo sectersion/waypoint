@@ -5,5 +5,8 @@
   "type": "module",
   "scripts": {
     "deploy": "waypoint deploy"
+  },
+  "dependencies": {
+    "@sardonic-labs/waypoint-sdk": "workspace:*"
   }
 }

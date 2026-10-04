@@ -1,10 +1,12 @@
 export interface AgentRecord {
   agentId: string
+  agentUuid: string
   deploymentId: string
   buildHash: string
   env: Record<string, string>
   port: number
   url: string
+  stateUrl: string
   close: () => Promise<void>
   startedAt: Date
 }
@@ -14,7 +16,7 @@ const agents = new Map<string, AgentRecord>()
 export function put(rec: AgentRecord): void {
   const existing = agents.get(rec.agentId)
   if (existing) {
-    existing.close().catch(() => {})
+    existing.close().catch(() => undefined)
   }
   agents.set(rec.agentId, rec)
 }
@@ -30,7 +32,7 @@ export function list(): AgentRecord[] {
 export function remove(agentId: string): boolean {
   const rec = agents.get(agentId)
   if (!rec) return false
-  rec.close().catch(() => {})
+  rec.close().catch(() => undefined)
   agents.delete(agentId)
   return true
 }
