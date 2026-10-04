@@ -3,16 +3,28 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
   "scripts": {
-    "build":     "tsc",
-    "dev":       "tsx watch src/index.ts",
-    "start":     "node dist/index.js",
-    "typecheck": "tsc --noEmit",
-    "clean":     "rimraf dist .tsbuildinfo"
+    "build":       "tsc",
+    "dev":         "tsx watch src/index.ts",
+    "start":       "node dist/index.js",
+    "typecheck":   "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate":  "tsx src/db/migrate.ts",
+    "clean":       "rimraf dist .tsbuildinfo drizzle/.snapshot.json"
+  },
+  "dependencies": {
+    "busboy":      "^1.6.0",
+    "drizzle-orm": "^0.36.0",
+    "pg":          "^8.13.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "tsx":         "^4.19.0",
-    "typescript":  "^5.6.0"
+    "@types/busboy": "^1.5.4",
+    "@types/pg":     "^8.11.0",
+    "@types/node":   "^20.0.0",
+    "drizzle-kit":   "^0.28.0",
+    "rimraf":        "^6.1.3",
+    "tsx":           "^4.19.0",
+    "typescript":    "^5.6.0"
   }
 }

@@ -2,6 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
+import { createHash } from 'node:crypto'
 import { findFreePort, parsePortRange } from './ports.js'
 import * as registry from './registry.js'
 import { startAgent } from './agent-host.js'
@@ -12,6 +13,8 @@ const AGENT_PORT_RANGE = parsePortRange(
 )
 const BUNDLE_CACHE =
   process.env.WAYPOINT_BUNDLE_CACHE ?? path.join(os.tmpdir(), 'waypoint-runtime-cache')
+const SERVER_URL =
+  process.env.WAYPOINT_SERVER_URL ?? 'http://127.0.0.1:3000'
 
 await fs.mkdir(BUNDLE_CACHE, { recursive: true })
 
@@ -63,11 +66,10 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse): Promi
     return
   }
 
-  const releaseMatch = url.pathname.match(/^\/v1\/internal\/agents\/([^/]+)$/)
+  const releaseMatch = url.pathname.match(/^\/v1\/internal\/agents\/([^/]+)\/release$/)
   if (req.method === 'DELETE' && releaseMatch) {
     const removed = registry.remove(releaseMatch[1]!)
-    res.writeHead(removed ? 204 : 404)
-    res.end()
+    res.writeHead(removed ? 204 : 404).end()
     return
   }
 
@@ -75,31 +77,46 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse): Promi
   res.end(JSON.stringify({ error: 'not_found' }))
 }
 
+interface ClaimBody {
+  deploymentId: string
+  buildUrl: string
+  env: Record<string, string>
+}
+
 async function handleClaim(
   agentId: string,
   req: http.IncomingMessage,
   res: http.ServerResponse,
 ): Promise<void> {
-  const deploymentId = req.headers['x-waypoint-deployment-id']
-  const buildHash = req.headers['x-waypoint-build-hash']
-  if (typeof deploymentId !== 'string' || typeof buildHash !== 'string') {
+  const body = (await readJson(req)) as Partial<ClaimBody> | null
+  const deploymentId = body?.deploymentId
+  const buildUrl = body?.buildUrl
+  const env = body?.env
+  if (typeof deploymentId !== 'string' || typeof buildUrl !== 'string' || !env || typeof env !== 'object') {
     res.writeHead(400, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ error: 'missing_deployment_headers' }))
+    res.end(JSON.stringify({ error: 'bad_claim', message: 'expected {deploymentId, buildUrl, env}' }))
     return
   }
 
-  const body = await readBody(req)
-  if (body.length === 0) {
-    res.writeHead(400, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ error: 'empty_body' }))
+  const fetchUrl = buildUrl.startsWith('http') ? buildUrl : `${SERVER_URL}${buildUrl}`
+  const bundleRes = await fetch(fetchUrl)
+  if (!bundleRes.ok) {
+    res.writeHead(502, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ error: 'bundle_fetch_failed', status: bundleRes.status }))
     return
   }
+  const buf = Buffer.from(await bundleRes.arrayBuffer())
+  const buildHash = createHash('sha256').update(buf).digest('hex')
 
   const cacheDir = path.join(BUNDLE_CACHE, buildHash)
   await fs.mkdir(cacheDir, { recursive: true })
   const bundlePath = path.join(cacheDir, 'bundle.mjs')
-  await fs.writeFile(bundlePath, body)
+  await fs.writeFile(bundlePath, buf)
 
+  // ponytail: env is recorded on the agent record but not injected into
+  // process.env. MVP-0 runs agents in-process (this same Node process); v1.x
+  // child_process can spawn with merged env. Add child.applyEnv(env) when we
+  // swap.
   const port = await findFreePort(AGENT_PORT_RANGE, registry.usedPorts())
   const started = await startAgent(bundlePath, port)
 
@@ -107,14 +124,14 @@ async function handleClaim(
     agentId,
     deploymentId,
     buildHash,
+    env,
     port: started.port,
     url: started.url,
     close: started.close,
     startedAt: new Date(),
   })
 
-  res.writeHead(200, { 'content-type': 'application/json' })
-  res.end(JSON.stringify({ port: started.port, url: started.url }))
+  res.writeHead(204).end()
 }
 
 async function handleInvoke(
@@ -128,7 +145,6 @@ async function handleInvoke(
     res.end(JSON.stringify({ error: 'agent_not_found' }))
     return
   }
-
   await forwardHttp(req, res, `${rec.url}/`)
 }
 
@@ -166,11 +182,13 @@ function filterRequestHeaders(h: http.IncomingHttpHeaders): http.OutgoingHttpHea
   return out
 }
 
-function readBody(req: http.IncomingMessage): Promise<Buffer> {
+function readJson(req: http.IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = []
-    req.on('data', (chunk: Buffer) => chunks.push(chunk))
-    req.once('end', () => resolve(Buffer.concat(chunks)))
+    req.on('data', (c: Buffer) => chunks.push(c))
+    req.once('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))) } catch (e) { reject(e) }
+    })
     req.once('error', reject)
   })
 }
@@ -179,4 +197,5 @@ server.listen(RUNTIME_PORT, () => {
   console.log(`[runtime] listening on http://127.0.0.1:${RUNTIME_PORT}`)
   console.log(`[runtime] agent ports: ${AGENT_PORT_RANGE.from}-${AGENT_PORT_RANGE.to}`)
   console.log(`[runtime] bundle cache: ${BUNDLE_CACHE}`)
+  console.log(`[runtime] server url:   ${SERVER_URL}`)
 })

@@ -1,5 +1,5 @@
 {
-  "server":     "http://localhost:3030",
+  "server":     "http://localhost:3000",
   "agent":      "hello-agent",
   "entrypoint": "src/index.ts"
 }

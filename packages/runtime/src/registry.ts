@@ -2,6 +2,7 @@ export interface AgentRecord {
   agentId: string
   deploymentId: string
   buildHash: string
+  env: Record<string, string>
   port: number
   url: string
   close: () => Promise<void>
