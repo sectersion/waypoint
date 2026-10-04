@@ -15,6 +15,13 @@
       "when": 1791129381484,
       "tag": "0001_grey_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791130378571,
+      "tag": "0002_organic_dazzler",
+      "breakpoints": true
     }
   ]
 }

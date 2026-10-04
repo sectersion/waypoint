@@ -6,6 +6,7 @@ import { listAgents, createAgent, getAgent, deleteAgent } from './routes/agents.
 import { createDeployment } from './routes/deployments.js'
 import { invokeAgent } from './routes/invoke.js'
 import { serveArtifact } from './routes/artifacts.js'
+import { appendLogs, tailAgentLogs } from './routes/logs.js'
 import { httpError } from './errors.js'
 import { runtimeHealth } from './runtime-client.js'
 
@@ -53,6 +54,17 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const artifactMatch = url.pathname.match(/^\/v1\/internal\/artifacts\/([^/]+)\/bundle$/)
   if (artifactMatch && req.method === 'GET') {
     return serveArtifact(artifactMatch[1]!, res)
+  }
+
+  const logsAppendMatch = url.pathname.match(/^\/v1\/internal\/logs\/([^/]+)$/)
+  if (logsAppendMatch && req.method === 'POST') {
+    return appendLogs(logsAppendMatch[1]!, req, res)
+  }
+
+  const agentLogsMatch = url.pathname.match(/^\/v1\/agents\/([^/]+)\/logs$/)
+  if (agentLogsMatch && req.method === 'GET') {
+    const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get('limit') ?? '100')))
+    return tailAgentLogs(agentLogsMatch[1]!, limit, res)
   }
 
   httpError(res, 404, 'not_found', `no route for ${req.method} ${url.pathname}`)

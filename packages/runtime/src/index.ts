@@ -7,6 +7,9 @@ import { findFreePort, parsePortRange } from './ports.js'
 import * as registry from './registry.js'
 import { startAgent } from './agent-host.js'
 import { pool } from './db.js'
+import { installLogCapture, setActiveDeployment, drainLogs } from './log-capture.js'
+
+installLogCapture()
 
 const RUNTIME_PORT = Number(process.env.PORT ?? 3030)
 const AGENT_PORT_RANGE = parsePortRange(
@@ -122,6 +125,7 @@ async function handleClaim(
   await fs.writeFile(bundlePath, buf)
 
   const port = await findFreePort(AGENT_PORT_RANGE, registry.usedPorts())
+  setActiveDeployment(deploymentId)
   const started = await startAgent(bundlePath, port, agentUuid)
 
   // ponytail: state rides on the agent's own HTTP port at /__waypoint/state.
@@ -159,6 +163,7 @@ async function handleInvoke(
     res.end(JSON.stringify({ error: 'agent_not_found' }))
     return
   }
+  setActiveDeployment(rec.deploymentId)
   await forwardHttp(req, res, `${rec.url}/`)
 }
 
@@ -216,6 +221,8 @@ httpSrv.listen(RUNTIME_PORT, () => {
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   console.log(`[runtime] ${signal}, closing`)
+  setActiveDeployment(null)
+  await drainLogs().catch(() => undefined)
   for (const a of registry.list()) {
     await a.close().catch(() => undefined)
   }
