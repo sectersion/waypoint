@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import http from 'node:http'
 import { mkdir } from 'node:fs/promises'
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { migrate } from 'drizzle-orm/node-postgres/migrator'
+import { Pool } from 'pg'
 import { config } from './waypoint-config.js'
 import { listAgents, createAgent, getAgent, deleteAgent } from './routes/agents.js'
 import { createDeployment } from './routes/deployments.js'
@@ -12,6 +15,16 @@ import { httpError } from './errors.js'
 import { runtimeHealth } from './runtime-client.js'
 
 await mkdir(config.artifactsDir, { recursive: true })
+
+// ponytail: self-hosted v1, no manual db:migrate step. Run on boot; if a
+// migration breaks, the server crashes and the operator sees the error.
+{
+  const pool = new Pool({ connectionString: config.databaseUrl })
+  const db = drizzle(pool)
+  await migrate(db, { migrationsFolder: './drizzle' })
+  console.log('[server] migrations applied')
+  await pool.end()
+}
 
 const server = http.createServer(async (req, res) => {
   try {

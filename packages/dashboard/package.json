@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev":   "node serve.js",
     "start": "node serve.js",
     "typecheck": "tsc --noEmit"
   },
