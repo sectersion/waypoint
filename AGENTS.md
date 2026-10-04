@@ -21,7 +21,8 @@ The full spec is `PLAN.md` — read it before touching `/v1/...` routes, the ser
 packages/
 ├── cli/        @sardonic-labs/waypoint         global `waypoint` bin
 ├── server/     @sardonic-labs/waypoint-server  control plane, port 3000
-└── runtime/    @sardonic-labs/waypoint-runtime child process host, port 3030
+├── runtime/    @sardonic-labs/waypoint-runtime child process host, port 3030
+└── sdk/        @sardonic-labs/waypoint-sdk    state k/v for agents (runtime-imported)
 examples/
 └── hello-agent/                                MVP-0 deploy target
 PLAN.md                                         full v1 spec
@@ -29,7 +30,7 @@ docker-compose.yml                              postgres for dev
 turbo.json                                      build pipeline
 ```
 
-SDK and dashboard are not in the repo yet. Built after MVP-0 validation.
+Dashboard is not in the repo yet. Built after the metering/logs layer lands.
 
 ## Commands
 
@@ -52,6 +53,6 @@ Per-package: `pnpm --filter <name> <script>`.
 
 ## Status
 
-Done: runtime MVP-0 (claim/invoke, in-process bundle host), CLI MVP-0 (`deploy` + `agents list`), server MVP-0 (Drizzle + agent CRUD + multipart deploy + invoke proxy + internal artifacts).
+Done: runtime MVP-0, CLI MVP-0, server MVP-0, SDK MVP-0 (`waypointMastraTools` + state RPC over HTTP on `/__waypoint/state`, persisted in `state_kv`).
 
-Next: SDK (`waypointMastraTools` + state RPC over Unix socket) → metering → logs → dashboard → self-host packaging. Contracts at `PLAN.md`.
+Next: metering (`active_minute_rollups`) → dashboard → self-host packaging. Logs streaming sits between metering and dashboard — needed before the dashboard's invocation page is useful. Contracts at `PLAN.md`.
