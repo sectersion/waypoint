@@ -54,6 +54,6 @@ Per-package: `pnpm --filter <name> <script>`.
 
 ## Status
 
-Done: runtime MVP-0, CLI MVP-0, server MVP-0, SDK MVP-0, logs MVP-0 (runtime capture → server `logs` table → CLI `waypoint logs` + dashboard live tail), dashboard MVP-0 (vanilla HTML+JS+CSS, agents list + detail with deployments/invocations/state_kv/logs, CORS on server).
+Done: runtime MVP-0, CLI MVP-0, server MVP-0, SDK MVP-0, logs MVP-0, dashboard MVP-0, self-host MVP-0 (README quickstart, `pnpm dev` orchestrates server+runtime+dashboard, server auto-migrates on boot).
 
-Next: self-host packaging (`docker-compose.yml` to bring up postgres + server + runtime + dashboard with healthchecks; `pnpm` workspace baked in). Metering is skipped until a use case appears — self-hosted v1 has no billing. Contracts at `PLAN.md`.
+Next: nothing on the critical path. Optional follow-ups: full Docker packaging (Dockerfiles for server/runtime/dashboard, all-in-one compose), metering rollup, `pnpm link --global` for the CLI bin, `--follow` flag on `waypoint logs`. Pick one when the user asks.
